@@ -27,6 +27,7 @@ public class User {
     private String phone;
     private String profilePhoto;
     private String cv;
+    private String dob;
 
     // ✅ Constructors
     public User() {}
@@ -91,5 +92,13 @@ public class User {
 
     public void setCv(String cv) {
         this.cv = cv;
+    }
+
+    public String getDob() {
+    return dob;
+    }
+
+    public void setDob(String dob) {
+    this.dob = dob;
     }
 }
