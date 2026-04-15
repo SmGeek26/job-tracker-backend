@@ -3,6 +3,7 @@ package com.sohini.jobtracker;
 import com.sohini.jobtracker.security.JwtFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.*;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -20,16 +21,20 @@ public class SecurityConfig {
 
         http
             .csrf(csrf -> csrf.disable())
-            .cors(cors -> {}) 
+            .cors(cors -> {}) // ✅ Enable CORS
+
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(
-                "/users/**",
-                "/manifest.json",
-                "/favicon.ico",
-                "/static/**"
-                ).permitAll()
+
+                // ✅ Allow login/register APIs
+                .requestMatchers("/users/**").permitAll()
+
+                // ✅ VERY IMPORTANT: allow preflight requests
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                // everything else secured
                 .anyRequest().authenticated()
             )
+
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             );
@@ -45,13 +50,16 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-  
+    // ✅ FULL CORS CONFIG (this is what actually fixes your issue)
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
 
         org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
 
-        config.setAllowedOrigins(java.util.List.of("https://job-tracker-sigma-peach.vercel.app"));
+        config.setAllowedOrigins(java.util.List.of(
+                "https://job-tracker-5u2ttw5ov-smgeek26s-projects.vercel.app" // 👈 YOUR VERCEL URL
+        ));
+
         config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(java.util.List.of("*"));
         config.setAllowCredentials(true);
