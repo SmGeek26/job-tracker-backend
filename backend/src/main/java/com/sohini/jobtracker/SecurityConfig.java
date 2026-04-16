@@ -1,10 +1,11 @@
 package com.sohini.jobtracker;
 
 import com.sohini.jobtracker.security.JwtFilter;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.sohini.jobtracker.service.CustomUserDetailsService;
 import org.springframework.context.annotation.*;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -15,15 +16,21 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 public class SecurityConfig {
 
-    @Autowired
-    private JwtFilter jwtFilter;
+    private final JwtFilter jwtFilter;
+    private final CustomUserDetailsService userDetailsService;
+
+    public SecurityConfig(JwtFilter jwtFilter,
+                          CustomUserDetailsService userDetailsService) {
+        this.jwtFilter = jwtFilter;
+        this.userDetailsService = userDetailsService;
+    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
             .csrf(csrf -> csrf.disable())
-            .cors(cors -> {}) // enable CORS
+            .cors(cors -> {})
 
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()
@@ -33,7 +40,10 @@ public class SecurityConfig {
 
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            );
+            )
+
+            // 🔥 THIS IS THE MISSING LINK
+            .authenticationProvider(authenticationProvider());
 
         http.addFilterBefore(jwtFilter,
                 org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
@@ -41,27 +51,33 @@ public class SecurityConfig {
         return http.build();
     }
 
+    // ✅ CONNECT USER SERVICE + PASSWORD ENCODER
+    @Bean
+    public DaoAuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+
+        authProvider.setUserDetailsService(userDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder());
+
+        return authProvider;
+    }
+
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
-    // ✅ Password encoder
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    // ✅ CORS FIX (important)
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
 
         org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
 
-        config.setAllowedOriginPatterns(java.util.List.of(
-                "https://*.vercel.app"
-        ));
-
+        config.setAllowedOriginPatterns(java.util.List.of("https://*.vercel.app"));
         config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(java.util.List.of("*"));
         config.setAllowCredentials(true);
